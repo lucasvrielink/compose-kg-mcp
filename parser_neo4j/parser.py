@@ -201,7 +201,7 @@ def generate_service_detail_commands(yaml_data: Dict, file_name: str, service_na
 
 
 if __name__ == '__main__':
-    search_path = os.path.join('./src/docker_composes/', '*.yaml')
+    search_path = os.path.join('./parser_neo4j/docker_composes/', '*.yaml')
     compose_files = glob.glob(search_path)
     
     print(f"\n Parsing iniciado.")
