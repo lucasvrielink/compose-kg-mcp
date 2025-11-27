@@ -1,0 +1,25 @@
+services:
+  elasticsearch-test:
+    image: elasticsearch:7.17.0
+    container_name: es-test
+    environment:
+      - discovery.type=single-node
+      - cluster.name=test-cluster
+    ports:
+      - "9200:9200"
+    networks:
+      - elastic-test-net
+
+  kibana-test:
+    image: kibana:7.17.0
+    container_name: kb-test
+    ports:
+      - "5602:5601"
+    depends_on:
+      - elasticsearch-test
+    networks:
+      - elastic-test-net
+
+networks:
+  elastic-test-net:
+    driver: bridge

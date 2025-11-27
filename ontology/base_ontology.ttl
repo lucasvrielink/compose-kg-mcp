@@ -1,0 +1,137 @@
+@prefix : <http://infra.knowledge/docker#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://infra.knowledge/docker#> .
+
+<http://infra.knowledge/docker> rdf:type owl:Ontology ;
+                                 rdfs:comment "Ontologia para Infraestrutura Docker baseada em parsing de docker-compose." ;
+                                 rdfs:label "Docker Infrastructure Ontology" .
+
+# Classes
+
+:Service rdf:type owl:Class ;
+         rdfs:label "Service" ;
+         rdfs:comment "Representa um serviço definido no docker-compose (ex: elasticsearch, backend)." .
+
+:Image rdf:type owl:Class ;
+       rdfs:label "Docker Image" ;
+       rdfs:comment "A imagem Docker utilizada por um serviço." .
+
+:PortMapping rdf:type owl:Class ;
+             rdfs:label "Port Mapping" ;
+             rdfs:comment "O mapeamento de portas entre o Host e o Container." .
+
+:Volume rdf:type owl:Class ;
+        rdfs:label "Volume" ;
+        rdfs:comment "Armazenamento persistente montado no container." .
+
+:EnvironmentVariable rdf:type owl:Class ;
+                     rdfs:label "Environment Variable" ;
+                     rdfs:comment "Variável de ambiente configurada para o serviço." .
+
+:Network rdf:type owl:Class ;
+         rdfs:label "Network" ;
+         rdfs:comment "Rede Docker onde os serviços se conectam." .
+
+
+# Relações
+
+:usesImage rdf:type owl:ObjectProperty ;
+           rdfs:domain :Service ;
+           rdfs:range :Image ;
+           rdfs:label "uses image" .
+
+:exposesPort rdf:type owl:ObjectProperty ;
+             rdfs:domain :Service ;
+             rdfs:range :PortMapping ;
+             rdfs:label "exposes port" .
+
+:mountsVolume rdf:type owl:ObjectProperty ;
+              rdfs:domain :Service ;
+              rdfs:range :Volume ;
+              rdfs:label "mounts volume" .
+
+:hasEnvVar rdf:type owl:ObjectProperty ;
+           rdfs:domain :Service ;
+           rdfs:range :EnvironmentVariable ;
+           rdfs:label "has environment variable" .
+
+:connectsTo rdf:type owl:ObjectProperty ;
+            rdfs:domain :Service ;
+            rdfs:range :Network ;
+            rdfs:label "connects to network" .
+
+:dependsOn rdf:type owl:ObjectProperty ;
+           rdfs:domain :Service ;
+           rdfs:range :Service ;
+           rdfs:label "depends on service" .
+
+
+# Atributos
+
+# Propriedades Comuns
+:name rdf:type owl:DatatypeProperty ;
+      rdfs:domain owl:Thing ;
+      rdfs:range xsd:string ;
+      rdfs:comment "Caption padrão para visualização (ex: nome do serviço, porta formatada)." .
+
+:uri rdf:type owl:DatatypeProperty ;
+     rdfs:domain owl:Thing ;
+     rdfs:range xsd:string ;
+     rdfs:comment "Identificador único (URI) do recurso." .
+
+# Propriedades de :Service
+:serviceName rdf:type owl:DatatypeProperty ;
+             rdfs:domain :Service ;
+             rdfs:range xsd:string .
+
+:composeFile rdf:type owl:DatatypeProperty ;
+             rdfs:domain :Service ;
+             rdfs:range xsd:string .
+
+# Propriedades de :Image
+:imageName rdf:type owl:DatatypeProperty ;
+           rdfs:domain :Image ;
+           rdfs:range xsd:string .
+
+:imageVersion rdf:type owl:DatatypeProperty ;
+              rdfs:domain :Image ;
+              rdfs:range xsd:string .
+
+# Propriedades de :PortMapping
+:hostPort rdf:type owl:DatatypeProperty ;
+          rdfs:domain :PortMapping ;
+          rdfs:range xsd:integer .
+
+:containerPort rdf:type owl:DatatypeProperty ;
+               rdfs:domain :PortMapping ;
+               rdfs:range xsd:integer .
+
+:protocol rdf:type owl:DatatypeProperty ;
+          rdfs:domain :PortMapping ;
+          rdfs:range xsd:string .
+
+# Propriedades de :Volume
+:hostPath rdf:type owl:DatatypeProperty ;
+          rdfs:domain :Volume ;
+          rdfs:range xsd:string .
+
+:containerPath rdf:type owl:DatatypeProperty ;
+               rdfs:domain :Volume ;
+               rdfs:range xsd:string .
+
+:accessMode rdf:type owl:DatatypeProperty ;
+            rdfs:domain :Volume ;
+            rdfs:range xsd:string .
+
+# Propriedades de :EnvironmentVariable
+:varKey rdf:type owl:DatatypeProperty ;
+        rdfs:domain :EnvironmentVariable ;
+        rdfs:range xsd:string .
+
+:varValue rdf:type owl:DatatypeProperty ;
+          rdfs:domain :EnvironmentVariable ;
+          rdfs:range xsd:string .
