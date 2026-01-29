@@ -34,12 +34,8 @@ def list_all_services():
 @mcp.tool()
 def get_service_details(service_name: str):
     """
-    Returns the full technical configuration of a specific service.
-    Use this to inspect:
-    - Docker Image and Tag
-    - Open Ports (Host:Container)
-    - Environment Variables (Key=Value)
-    - Mounted Volumes (HostPath:ContainerPath)
+    Returns full technical configuration: Image, Ports, Envs, Volumes.
+    Useful for security auditing (checking :latest tags or exposed secrets).
     """
     query = """
     MATCH (s:Service {serviceName: $name})
@@ -49,7 +45,7 @@ def get_service_details(service_name: str):
         OPTIONAL MATCH (s)-[:MOUNTS_VOLUME]->(v:Volume)
     RETURN 
         s.serviceName as service,
-        i.name as image,
+        i.imageName + ':' + i.imageVersion as image_full,
         collect(DISTINCT p.name) as ports,
         collect(DISTINCT ev.varKey + '=' + ev.varValue) as environment,
         collect(DISTINCT v.hostPath + ':' + v.containerPath) as volumes
@@ -59,8 +55,7 @@ def get_service_details(service_name: str):
 @mcp.tool()
 def check_port_conflicts():
     """
-    Scans the entire host infrastructure for port collisions.
-    Returns a list of host ports that are claimed by more than one service.
+    Scans for host port collisions across all services.
     """
     query = """
     MATCH (s:Service)-[:EXPOSES_PORT]->(p:PortMapping)
@@ -69,41 +64,61 @@ def check_port_conflicts():
     RETURN 
         host_port,
         conflicting_services as involved_services,
-        "Port conflict detected" as status
+        "CRITICAL: Port conflict detected" as status
     """
     return run_cypher(query)
 
 @mcp.tool()
-def find_service_dependencies(service_name: str):
+def find_impact_analysis(service_name: str):
     """
-    Analyzes the dependency chain for a specific service.
-    Returns both direct dependencies (what it needs) and reverse dependencies (what needs it).
+    Returns ALL services that directly or indirectly depend on the target service
+    using transitive dependency traversal (DEPENDS_ON*).
     """
     query = """
-    MATCH (s:Service {name: $name})
-    
-    OPTIONAL MATCH (s)-[:DEPENDS_ON]->(upstream:Service)
-    OPTIONAL MATCH (downstream:Service)-[:DEPENDS_ON]->(s)
-    
+    MATCH (target:Service {name: $name})
+    MATCH (downstream:Service)-[:DEPENDS_ON*]->(target)
     RETURN 
-        s.name as analyzed_service,
-        collect(DISTINCT upstream.name) as depends_on,
-        collect(DISTINCT downstream.name) as required_by
+        target.name as failed_service,
+        collect(DISTINCT downstream.name) as affected_services_chain,
+        count(downstream) as total_impacted
     """
     return run_cypher(query, {"name": service_name})
 
-
 @mcp.tool()
-def inspect_network_members(network_name: str):
+def check_volume_conflicts():
     """
-    Returns all services connected to a specific Docker network.
-    Useful for validating isolation policies.
+    Identifies if multiple services are mounting the same Host Path,
+    which can lead to data corruption (Race Conditions).
     """
     query = """
-        MATCH (n:Network {name: $net_name})<-[:CONNECTS_TO]-(s:Service)
-        RETURN s.name as member_service
+    MATCH (s:Service)-[:MOUNTS_VOLUME]->(v:Volume)
+    WITH v.hostPath as host_path, collect(s.name) as services, count(s) as count
+    WHERE count > 1
+    RETURN 
+        host_path,
+        services as conflicting_services,
+        "CRITICAL: Multiple writers on same host path" as status
     """
-    return run_cypher(query, {"net_name": network_name})
+    return run_cypher(query)
+
+@mcp.tool()
+def analyze_network_reachability(source_service: str, target_service: str):
+    """
+    Uses Graph ShortestPath algorithm to find if a physical network path exists
+    between two services, specifically looking for 'bridge' containers that bypass isolation.
+    """
+    query = """
+    MATCH (source:Service {name: $source}), (target:Service {name: $target})
+    MATCH path = shortestPath((source)-[:CONNECTS_TO*]-(target))
+    RETURN 
+        [n in nodes(path) | coalesce(n.name, n.serviceName)] as attack_path,
+        length(path)/2 as network_hops,
+        "WARNING: Segmentation Violation Detected" as status
+    """
+    result = run_cypher(query, {"source": source_service, "target": target_service})
+    if not result:
+        return f"No path found between '{source_service}' and '{target_service}'. Isolation Confirmed."
+    return result
 
 if __name__ == "__main__":
     mcp.run()

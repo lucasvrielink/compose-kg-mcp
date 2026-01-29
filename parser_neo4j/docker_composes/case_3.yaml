@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  load-balancer:
+    image: nginx:1.23
+    container_name: public_gateway
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - public_internet
+
+  legacy-auth-service:
+    image: tomcat:9.0-jdk11
+    container_name: legacy_auth_bridge
+    environment:
+      JAVA_OPTS: "-Xmx512m -Dspring.profiles.active=prod"
+    networks:
+      - public_internet  # conectado a borda
+      - secure_vault # conectado ao secure vault (erro)
+
+  vault-database:
+    image: mongo:6.0
+    container_name: secure_customer_vault
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: vault_admin
+      MONGO_INITDB_ROOT_PASSWORD: ultra_secure_vault_pass
+    command: ["mongod", "--auth"]
+    networks:
+      - secure_vault
+
+  internal-audit:
+    image: alpine:latest
+    command: tail -f /dev/null
+    networks:
+      - management_net # rede de fato isolada para contraste
+
+networks:
+  public_internet:
+    driver: bridge
+  secure_vault:
+    internal: true # docker diz que é interna mas a ponte quebra isso
+  management_net:
+    internal: true

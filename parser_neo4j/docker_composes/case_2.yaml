@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  mysql-database:
+    image: mysql:8.0
+    container_name: mysql_srv
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secret
+      MYSQL_DATABASE: root_secret
+    volumes:
+      - ./infra_data/shared_storage:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - root_net
+
+  analytics-db:
+    image: mariadb:10.6
+    container_name: analytics_mariadb_srv
+    environment:
+      MYSQL_ROOT_PASSWORD: root_analytics_secret
+      MYSQL_DATABASE: big_data_logs
+    volumes:
+      - ./infra_data/shared_storage:/var/lib/mysql
+    ports:
+      - "3307:3307"
+    networks:
+      - analytics_net
+
+networks:
+  root_net:
+  analytics_net:

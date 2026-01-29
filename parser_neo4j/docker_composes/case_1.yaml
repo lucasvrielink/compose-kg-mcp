@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # banco de dados
+  ecommerce-db:
+    image: postgres:15-alpine
+    container_name: shop_db_primary
+    environment:
+      POSTGRES_USER: admin_user # credencial exposta (FATO UTILIZADO APENAS PARA FINS DE TESTES E VALIDAÇÃO DA SOLUÇÃO)
+      POSTGRES_PASSWORD: production_secure_password_123 # credencial exposta (FATO UTILIZADO APENAS PARA FINS DE TESTES E VALIDAÇÃO DA SOLUÇÃO)
+      POSTGRES_DB: shop_inventory # credencial exposta (FATO UTILIZADO APENAS PARA FINS DE TESTES E VALIDAÇÃO DA SOLUÇÃO)
+    volumes:
+      - db_data_volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin_user"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend_net
+
+  # backend que depende do banco de dados
+  inventory-api:
+    image: python:3.9-slim
+    container_name: shop_api_core
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    environment:
+      DATABASE_URL: postgresql://admin_user:production_secure_password_123@ecommerce-db:5432/shop_inventory
+      API_KEY_SECRET: sk_live_5544332211 # credencial exposta (FATO UTILIZADO APENAS PARA FINS DE TESTES E VALIDAÇÃO DA SOLUÇÃO)
+    depends_on:
+      ecommerce-db:
+        condition: service_healthy
+    networks:
+      - backend_net
+      - frontend_net
+
+  # cache
+  session-cache:
+    image: redis:7.0-alpine
+    container_name: shop_redis_cache
+    command: redis-server --appendonly yes
+    depends_on:
+      - inventory-api
+    networks:
+      - frontend_net
+
+  # front que depende de toda a cadeia acima
+  storefront-ui:
+    image: node:18-alpine
+    container_name: shop_ui_public
+    environment:
+      REACT_APP_API_URL: http://inventory-api:8000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - session-cache
+    networks:
+      - frontend_net
+
+volumes:
+  db_data_volume:
+
+networks:
+  backend_net:
+    internal: true
+  frontend_net:
+    driver: bridge

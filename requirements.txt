@@ -2,3 +2,4 @@ neo4j
 python-dotenv
 pyyaml
 mcp
+matplotlib
