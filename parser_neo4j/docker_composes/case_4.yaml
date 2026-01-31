@@ -1,0 +1,27 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    networks:
+      - net
+    ports:
+      - "5432:5432"
+
+  dbdb:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    networks:
+      - test_net
+    ports:
+      - "5432:5432"
+
+networks:
+  net:
+    driver: bridge
+  test_net:
+    driver: bridge
